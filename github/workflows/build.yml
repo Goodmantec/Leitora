@@ -17,14 +17,31 @@ jobs:
           channel: stable
           cache: true
       - name: Descompactar
-        run: unzip -q leitor_tradutor.zip
+        run: unzip -q leitor_tradutor*.zip
+      - name: Corrigir versoes
+        run: |
+          sed -i 's/0\.13\.1/0.14.0/' leitor_tradutor/pubspec.yaml
       - name: Preparar projeto
         working-directory: leitor_tradutor
         run: bash setup.sh
+      - name: Corrigir Android
+        working-directory: leitor_tradutor
+        run: |
+          mkdir -p ~/.gradle/init.d
+          cat > ~/.gradle/init.d/compilesdk.gradle <<'EOF'
+          allprojects {
+            afterEvaluate { p ->
+              if (p.hasProperty('android')) {
+                p.android.compileSdkVersion(36)
+              }
+            }
+          }
+          EOF
+          echo "shrink=false" >> android/gradle.properties
       - name: Compilar APK
         working-directory: leitor_tradutor
-        run: flutter build apk --release
+        run: flutter build apk --release --split-per-abi
       - uses: actions/upload-artifact@v4
         with:
           name: leitor-tradutor-apk
-          path: leitor_tradutor/build/app/outputs/flutter-apk/app-release.apk
+          path: leitor_tradutor/build/app/outputs/flutter-apk/*-release.apk
